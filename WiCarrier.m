@@ -10,15 +10,25 @@
 CHDeclareClass(SBStatusBarCarrierView);
 CHDeclareClass(SBStatusBarOperatorNameView);
 CHDeclareClass(SBWiFiManager);
+CHDeclareClass(SpringBoard);
+
+CHDeclareClass(SBAwayController);
+CHDeclareClass(SBWiFiAlertItem);
+CHDeclareClass(SBAlertItemsController);
 
 static SBStatusBarCarrierView *carrierView;
 
 static SCNetworkReachabilityRef reachability;
 static BOOL useHost;
 
+typedef struct __WiFiManagerClient *WiFiManagerClientRef;
+extern CFArrayRef WiFiManagerClientCopyNetworks(WiFiManagerClientRef managerClient);
+
 typedef struct __WiFiNetwork *WiFiNetworkRef;
 extern BOOL WiFiNetworkIsWPA(WiFiNetworkRef network);
 extern BOOL WiFiNetworkIsEAP(WiFiNetworkRef network);
+
+extern CFArrayRef _WiFiCreateRecordsFromNetworks(CFArrayRef networks);
 
 static void ReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info)
 {
@@ -107,10 +117,51 @@ CHMethod(1, void, SBStatusBarCarrierView, startOperatorNameLooping, id, looping)
 {
 }
 
+CFRunLoopTimerRef touchTimer;
+
+void touchTimerCallback()
+{
+	if (touchTimer) {
+		CFRelease(touchTimer);
+		touchTimer = NULL;
+	}
+	if ([[CHClass(SBAwayController) sharedAwayController] isLocked])
+		return;
+	// Create Alert
+	SBWiFiAlertItem *alert = [[CHAlloc(SBWiFiAlertItem) init] autorelease];
+	[CHSharedInstance(SBAlertItemsController) activateAlertItem:alert];
+	SBWiFiManager *wiFiManager = CHSharedInstance(SBWiFiManager);
+	if (wiFiManager) {
+		// Load list of saved networks
+		CFArrayRef networks = WiFiManagerClientCopyNetworks(CHIvar(wiFiManager, _manager, WiFiManagerClientRef));
+		CFArrayRef records = _WiFiCreateRecordsFromNetworks(networks);
+		CFRelease(networks);
+		[alert setNetworks:(NSArray *)records];
+		CFRelease(records);
+		// Scan for list of visible networks
+		[wiFiManager setDelegate:[UIApplication sharedApplication]];
+		[wiFiManager scan];
+	}
+}
+
+CHMethod(2, void, SBStatusBarCarrierView, touchesBegan, NSSet *, touches, withEvent, UIEvent *, event)
+{
+	if (!touchTimer) {
+		touchTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, [NSDate timeIntervalSinceReferenceDate] + 0.5f, 0.0f, 0, 0, (CFRunLoopTimerCallBack)touchTimerCallback, NULL);
+		CFRunLoopAddTimer(CFRunLoopGetCurrent(), touchTimer, kCFRunLoopCommonModes);
+	}
+	CHSuper(2, SBStatusBarCarrierView, touchesBegan, touches, withEvent, event);
+}
+
 CHMethod(2, void, SBStatusBarCarrierView, touchesEnded, NSSet *, touches, withEvent, UIEvent *, event)
 {
-	useHost = !useHost;
-	[carrierView operatorNameChanged];
+	if (touchTimer) {
+		CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), touchTimer, kCFRunLoopCommonModes);
+		CFRelease(touchTimer);
+		touchTimer = NULL;
+		useHost = !useHost;
+		[carrierView operatorNameChanged];
+	}
 	CHSuper(2, SBStatusBarCarrierView, touchesEnded, touches, withEvent, event);
 }
 
@@ -125,12 +176,21 @@ CHMethod(0, void, SBWiFiManager, _updateCurrentNetwork)
 	[carrierView operatorNameChanged];
 }
 
+CHMethod(2, void, SpringBoard, wifiManager, SBWiFiManager *, wifiManager, scanCompleted, id, scan)
+{
+	id alert = [CHSharedInstance(SBAlertItemsController) alertItemOfClass:CHClass(SBWiFiAlertItem)];
+	if (alert)
+		[alert setNetworks:scan];
+	CHSuper(2, SpringBoard, wifiManager, wifiManager, scanCompleted, scan);
+}
+
 CHConstructor
 {
 	CHLoadLateClass(SBStatusBarCarrierView);
 	CHHook(1, SBStatusBarCarrierView, setOperatorName);
 	CHHook(1, SBStatusBarCarrierView, operatorIconForName);
 	CHHook(1, SBStatusBarCarrierView, startOperatorNameLooping);
+	CHHook(2, SBStatusBarCarrierView, touchesBegan, withEvent);
 	CHHook(2, SBStatusBarCarrierView, touchesEnded, withEvent);
 	
 	CHLoadLateClass(SBStatusBarOperatorNameView);
@@ -138,4 +198,11 @@ CHConstructor
 	
 	CHLoadLateClass(SBWiFiManager);
 	CHHook(0, SBWiFiManager, _updateCurrentNetwork);
+	
+	CHLoadLateClass(SpringBoard);
+	CHHook(2, SpringBoard, wifiManager, scanCompleted);
+	
+	CHLoadLateClass(SBAwayController);
+	CHLoadLateClass(SBWiFiAlertItem);
+	CHLoadLateClass(SBAlertItemsController);
 }
