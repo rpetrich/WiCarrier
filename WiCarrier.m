@@ -12,10 +12,6 @@ CHDeclareClass(SBStatusBarOperatorNameView);
 CHDeclareClass(SBWiFiManager);
 CHDeclareClass(SpringBoard);
 
-CHDeclareClass(SBAwayController);
-CHDeclareClass(SBWiFiAlertItem);
-CHDeclareClass(SBAlertItemsController);
-
 static SBStatusBarCarrierView *carrierView;
 
 static SCNetworkReachabilityRef reachability;
@@ -125,23 +121,6 @@ void touchTimerCallback()
 		CFRelease(touchTimer);
 		touchTimer = NULL;
 	}
-	if ([[CHClass(SBAwayController) sharedAwayController] isLocked])
-		return;
-	// Create Alert
-	SBWiFiAlertItem *alert = [[CHAlloc(SBWiFiAlertItem) init] autorelease];
-	[CHSharedInstance(SBAlertItemsController) activateAlertItem:alert];
-	SBWiFiManager *wiFiManager = CHSharedInstance(SBWiFiManager);
-	if (wiFiManager) {
-		// Load list of saved networks
-		CFArrayRef networks = WiFiManagerClientCopyNetworks(CHIvar(wiFiManager, _manager, WiFiManagerClientRef));
-		CFArrayRef records = _WiFiCreateRecordsFromNetworks(networks);
-		CFRelease(networks);
-		[alert setNetworks:(NSArray *)records];
-		CFRelease(records);
-		// Scan for list of visible networks
-		[wiFiManager setDelegate:[UIApplication sharedApplication]];
-		[wiFiManager scan];
-	}
 }
 
 CHMethod(2, void, SBStatusBarCarrierView, touchesBegan, NSSet *, touches, withEvent, UIEvent *, event)
@@ -176,14 +155,6 @@ CHMethod(0, void, SBWiFiManager, _updateCurrentNetwork)
 	[carrierView operatorNameChanged];
 }
 
-CHMethod(2, void, SpringBoard, wifiManager, SBWiFiManager *, wifiManager, scanCompleted, id, scan)
-{
-	id alert = [CHSharedInstance(SBAlertItemsController) alertItemOfClass:CHClass(SBWiFiAlertItem)];
-	if (alert)
-		[alert setNetworks:scan];
-	CHSuper(2, SpringBoard, wifiManager, wifiManager, scanCompleted, scan);
-}
-
 CHConstructor
 {
 	CHLoadLateClass(SBStatusBarCarrierView);
@@ -199,10 +170,4 @@ CHConstructor
 	CHLoadLateClass(SBWiFiManager);
 	CHHook(0, SBWiFiManager, _updateCurrentNetwork);
 	
-	CHLoadLateClass(SpringBoard);
-	CHHook(2, SpringBoard, wifiManager, scanCompleted);
-	
-	CHLoadLateClass(SBAwayController);
-	CHLoadLateClass(SBWiFiAlertItem);
-	CHLoadLateClass(SBAlertItemsController);
 }
