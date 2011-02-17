@@ -283,7 +283,17 @@ CHOptimizedMethod(0, self, void, SBStatusBarDataManager, _updateServiceItem)
 
 CHOptimizedMethod(2, super, id, UIStatusBarServiceItemView, initWithItem, UIStatusBarItem *, item, style, NSInteger, style)
 {
+	// 4.0-4.1
 	if ((self = CHSuper(2, UIStatusBarServiceItemView, initWithItem, item, style, style))) {
+		self.userInteractionEnabled = YES;
+	}
+	return self;
+}
+
+CHOptimizedMethod(4, super, id, UIStatusBarServiceItemView, initWithItem, UIStatusBarItem *, item, data, void *, data, actions, NSInteger, actions, style, NSInteger, style)
+{
+	// 4.2
+	if ((self = CHSuper(4, UIStatusBarServiceItemView, initWithItem, item, data, data, actions, actions, style, style))) {
 		self.userInteractionEnabled = YES;
 	}
 	return self;
@@ -368,6 +378,7 @@ CHConstructor
 		CHHook(0, SBStatusBarDataManager, _updateServiceItem);
 		CHLoadLateClass(UIStatusBarServiceItemView);
 		CHHook(2, UIStatusBarServiceItemView, initWithItem, style);
+		CHHook(4, UIStatusBarServiceItemView, initWithItem, data, actions, style);
 		CHHook(2, UIStatusBarServiceItemView, touchesEnded, withEvent);
 	} else {
 		CHLoadLateClass(SBStatusBarCarrierView);
