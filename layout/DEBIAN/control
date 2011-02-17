@@ -6,7 +6,6 @@ Description: Display WiFi network in status bar
 Maintainer: Ryan Petrich <rpetrich@gmail.com>
 Author: Ryan Petrich <rpetrich@gmail.com>
 Depends: mobilesubstrate, firmware (>= 3.0)
-Pre-Depends: firmware (<< 4.2)
 Section: Tweaks
 Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=WiCarrierDp
 Website: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=WiCarrierDp
