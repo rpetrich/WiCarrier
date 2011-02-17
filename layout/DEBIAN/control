@@ -1,10 +1,10 @@
 Package: com.booleanmagic.wicarrier
 Name: WiCarrier
-Version: 1.1.1
+Version: 1.1.2~beta1
 Architecture: iphoneos-arm
 Description: Display WiFi network in status bar
-Maintainer: Ryan Petrich <rpetrich@gmail.com>
-Author: Ryan Petrich <rpetrich@gmail.com>
+Maintainer: Ryan Petrich <rpetrich+wicarrier@gmail.com>
+Author: Ryan Petrich <rpetrich+wicarrier@gmail.com>
 Depends: mobilesubstrate, firmware (>= 3.0)
 Section: Tweaks
 Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=WiCarrierDp
