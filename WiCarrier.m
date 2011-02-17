@@ -13,6 +13,8 @@ CHDeclareClass(SBStatusBarCarrierView);
 CHDeclareClass(SBStatusBarOperatorNameView);
 CHDeclareClass(SBWiFiManager);
 
+#define IS_IOS_42_OR_LATER() (kCFCoreFoundationVersionNumber >= 550.52)
+
 static SBStatusBarCarrierView *carrierView;
 static SBStatusBarDataManager *dataManager;
 
@@ -46,6 +48,32 @@ struct StatusBarData
     bool bluetoothConnected;            // Bluetooth
     bool displayRawGSMSignal;           // SignalStrength
     bool displayRawWifiSignal;          // DataNetwork
+};
+
+struct StatusBarData42 {
+	char itemIsEnabled[22];
+	char timeString[64];
+	int gsmSignalStrengthRaw;
+	int gsmSignalStrengthBars;
+	char serviceString[100];
+	char serviceImageBlack[100];
+	char serviceImageSilver[100];
+	char operatorDirectory[1024];
+	unsigned int serviceContentType;
+	int wifiSignalStrengthRaw;
+	int wifiSignalStrengthBars;
+	unsigned int dataNetworkType;
+	int batteryCapacity;
+	unsigned int batteryState;
+	char notChargingString[150];
+	int bluetoothBatteryCapacity;
+	int thermalColor;
+	bool slowActivity;
+	char activityDisplayId[256];
+	bool bluetoothConnected;
+	char recordingAppString[100];
+	bool displayRawGSMSignal;
+	bool displayRawWifiSignal;
 };
 
 @interface SBStatusBarDataManager : NSObject {
@@ -216,20 +244,39 @@ CHOptimizedMethod(0, self, void, SBStatusBarDataManager, _updateServiceItem)
 		dataManager = [self retain];
 	}
 	CHSuper(0, SBStatusBarDataManager, _updateServiceItem);
-	struct StatusBarData *data = CHIvarRef(self, _data, struct StatusBarData);
-	if (data) {
-		NSString *text = GetNewNetworkName();
-		if (text) {
-			[text getCString:&data->serviceString[0] maxLength:100 encoding:NSUTF8StringEncoding];
-			data->serviceImageBlack[0] = 0;
-			data->serviceImageSilver[0] = 0;
-			data->operatorDirectory[0] = 0;
-			NSString **serviceStringRef = CHIvarRef(self, _serviceString, NSString *);
-			if (serviceStringRef) {
-				[*serviceStringRef release];
-				*serviceStringRef = nil;
+	if (IS_IOS_42_OR_LATER()) {
+		struct StatusBarData42 *data = CHIvarRef(self, _data, struct StatusBarData42);
+		if (data) {
+			NSString *text = GetNewNetworkName();
+			if (text) {
+				[text getCString:&data->serviceString[0] maxLength:100 encoding:NSUTF8StringEncoding];
+				data->serviceImageBlack[0] = 0;
+				data->serviceImageSilver[0] = 0;
+				data->operatorDirectory[0] = 0;
+				NSString **serviceStringRef = CHIvarRef(self, _serviceString, NSString *);
+				if (serviceStringRef) {
+					[*serviceStringRef release];
+					*serviceStringRef = nil;
+				}
+				[self _dataChanged];
 			}
-			[self _dataChanged];
+		}
+	} else {
+		struct StatusBarData *data = CHIvarRef(self, _data, struct StatusBarData);
+		if (data) {
+			NSString *text = GetNewNetworkName();
+			if (text) {
+				[text getCString:&data->serviceString[0] maxLength:100 encoding:NSUTF8StringEncoding];
+				data->serviceImageBlack[0] = 0;
+				data->serviceImageSilver[0] = 0;
+				data->operatorDirectory[0] = 0;
+				NSString **serviceStringRef = CHIvarRef(self, _serviceString, NSString *);
+				if (serviceStringRef) {
+					[*serviceStringRef release];
+					*serviceStringRef = nil;
+				}
+				[self _dataChanged];
+			}
 		}
 	}
 }
