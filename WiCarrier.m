@@ -371,6 +371,15 @@ CHOptimizedMethod(0, self, void, SBWiFiManager, _updateCurrentNetwork)
 	ForceUpdate();
 }
 
+CHOptimizedMethod(0, self, id, SBWiFiManager, init)
+{
+	if ((self = CHSuper(0, SBWiFiManager, init))) {
+		CHHook(0, SBWiFiManager, _updateCurrentNetwork);
+		[self performSelector:@selector(_updateCurrentNetwork) withObject:nil afterDelay:0.0];
+	}
+	return self;
+}
+
 CHConstructor
 {
 	if (CHLoadLateClass(SBStatusBarDataManager)) {
@@ -391,5 +400,5 @@ CHConstructor
 	}
 	
 	CHLoadLateClass(SBWiFiManager);
-	CHHook(0, SBWiFiManager, _updateCurrentNetwork);
+	CHHook(0, SBWiFiManager, init);
 }
