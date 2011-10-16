@@ -7,8 +7,11 @@ else
 
 TWEAK_NAME = WiCarrier
 WiCarrier_OBJC_FILES = WiCarrier.m
-WiCarrier_FRAMEWORKS = UIKit SystemConfiguration
-WiCarrier_PRIVATE_FRAMEWORKS = MobileWiFi
+WiCarrier_FRAMEWORKS = UIKit
+WiCarrier_PRIVATE_FRAMEWORKS = SystemConfiguration
+WiCarrier_LDFLAGS = -weak_framework MobileWiFi
+
+TARGET_IPHONEOS_DEPLOYMENT_VERSION = 3.0
 
 include framework/makefiles/common.mk
 include framework/makefiles/tweak.mk
