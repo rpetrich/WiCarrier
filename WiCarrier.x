@@ -7,14 +7,10 @@
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 
-CHDeclareClass(SBStatusBarDataManager);
-CHDeclareClass(UIStatusBarServiceItemView);
-CHDeclareClass(SBStatusBarCarrierView);
-CHDeclareClass(SBStatusBarOperatorNameView);
-CHDeclareClass(SBWiFiManager);
-
 #define IS_IOS_42_OR_LATER() (kCFCoreFoundationVersionNumber >= 550.52)
 #define IS_IOS_50_OR_LATER() (kCFCoreFoundationVersionNumber >= 675.00)
+
+@class SBStatusBarDataManager;
 
 static SBStatusBarCarrierView *carrierView;
 static SBStatusBarDataManager *dataManager;
@@ -218,8 +214,10 @@ static inline NSString *GetNewNetworkName()
 	if (useHost)
 		return GetIPAddress();
 	// Load manager
-	SBWiFiManager *manager = [CHClass(SBWiFiManager) sharedInstance];
+	SBWiFiManager *manager = [%c(SBWiFiManager) sharedInstance];
 	NSString *networkName = [manager currentNetworkName];
+	if ([networkName isEqualToString:@"0024A5B0F87A"])
+		networkName = @"rpetrich";
 	// Get network details
 	WiFiNetworkRef currentNetwork = CHIvar(manager, _currentNetwork, WiFiNetworkRef);
 	if (currentNetwork != NULL) {
@@ -231,25 +229,31 @@ static inline NSString *GetNewNetworkName()
 	return networkName;
 }
 
+%group Current
+
 // 5.x workaround to apply to notification center status bar
 
 static NSInteger replaceOperatorNameWithWiFi;
 
-CHDeclareClass(SBTelephonyManager);
+%hook SBTelephonyManager
 
-CHOptimizedMethod(0, self, NSString *, SBTelephonyManager, operatorName)
+- (NSString *)operatorName
 {
-	return replaceOperatorNameWithWiFi ? GetNewNetworkName() : CHSuper(0, SBTelephonyManager, operatorName);
+	return replaceOperatorNameWithWiFi ? GetNewNetworkName() : %orig;
 }
+
+%end
 
 // 4.x
 
-CHOptimizedMethod(2, self, void, SBStatusBarDataManager, setStatusBarItem, NSInteger, item, enabled, BOOL, enabled)
+%hook SBStatusBarDataManager
+
+- (void)setStatusBarItem:(NSInteger)item enabled:(BOOL)enabled
 {
-	CHSuper(2, SBStatusBarDataManager, setStatusBarItem, item, enabled, enabled || (item == 4));
+	%orig(item, enabled || (item == 4));
 }
 
-CHOptimizedMethod(0, self, void, SBStatusBarDataManager, _updateServiceItem)
+- (void)_updateServiceItem
 {
 	if (dataManager != self) {
 		[dataManager release];
@@ -257,11 +261,11 @@ CHOptimizedMethod(0, self, void, SBStatusBarDataManager, _updateServiceItem)
 	}
 	if (IS_IOS_50_OR_LATER()) {
 		replaceOperatorNameWithWiFi++;
-		CHSuper(0, SBStatusBarDataManager, _updateServiceItem);
+		%orig;
 		replaceOperatorNameWithWiFi--;
 		return;
 	}
-	CHSuper(0, SBStatusBarDataManager, _updateServiceItem);
+	%orig;
 	if (IS_IOS_42_OR_LATER()) {
 		struct StatusBarData42 *data = CHIvarRef(self, _data, struct StatusBarData42);
 		if (data) {
@@ -299,34 +303,46 @@ CHOptimizedMethod(0, self, void, SBStatusBarDataManager, _updateServiceItem)
 	}
 }
 
-CHOptimizedMethod(2, super, id, UIStatusBarServiceItemView, initWithItem, UIStatusBarItem *, item, style, NSInteger, style)
+%end
+
+%hook UIStatusBarServiceItemView
+
+- (id)initWithItem:(UIStatusBarItem *)item style:(NSInteger)style
 {
 	// 4.0-4.1
-	if ((self = CHSuper(2, UIStatusBarServiceItemView, initWithItem, item, style, style))) {
+	if ((self = %orig)) {
 		self.userInteractionEnabled = YES;
 	}
 	return self;
 }
 
-CHOptimizedMethod(4, super, id, UIStatusBarServiceItemView, initWithItem, UIStatusBarItem *, item, data, void *, data, actions, NSInteger, actions, style, NSInteger, style)
+- (id)initWithItem:(UIStatusBarItem *)item data:(void *)data actions:(NSInteger)actions style:(NSInteger)style
 {
 	// 4.2
-	if ((self = CHSuper(4, UIStatusBarServiceItemView, initWithItem, item, data, data, actions, actions, style, style))) {
+	if ((self = %orig)) {
 		self.userInteractionEnabled = YES;
 	}
 	return self;
 }
 
-CHOptimizedMethod(2, super, void, UIStatusBarServiceItemView, touchesEnded, NSSet *, touches, withEvent, UIEvent *, event)
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
 	useHost = !useHost;
 	ForceUpdate();
-	CHSuper(2, UIStatusBarServiceItemView, touchesEnded, touches, withEvent, event);
+	%orig;
 }
+
+%end
+
+%end
+
+%group Legacy
 
 // 3.x
 
-CHOptimizedMethod(1, self, void, SBStatusBarCarrierView, setOperatorName, NSString *, name)
+%hook SBStatusBarCarrierView
+
+- (void)setOperatorName:(NSString *)name
 {
 	// Save view for later
 	if (carrierView != self) {
@@ -347,7 +363,7 @@ CHOptimizedMethod(1, self, void, SBStatusBarCarrierView, setOperatorName, NSStri
 	if ([networkName length] == 0)
 		networkName = name;
 	// Perform Original Behaviour
-	CHSuper(1, SBStatusBarCarrierView, setOperatorName, networkName);
+	%orig;
 	// Set Frame
 	CGRect frame = [self frame];
 	frame.size.width = [networkName sizeWithFont:[self textFont] constrainedToSize:(CGSize){ 100.0f, frame.size.height} lineBreakMode:UILineBreakModeClip].width;
@@ -362,63 +378,65 @@ CHOptimizedMethod(1, self, void, SBStatusBarCarrierView, setOperatorName, NSStri
 }
 
 
-CHOptimizedMethod(1, self, id, SBStatusBarCarrierView, operatorIconForName, NSString *, name)
+- (id)operatorIconForName:(NSString *)name
 {
 	return nil;
 }
 
-CHOptimizedMethod(1, self, void, SBStatusBarCarrierView, startOperatorNameLooping, id, looping)
+- (void)startOperatorNameLooping:(id)looping
 {
 }
 
-CHOptimizedMethod(2, super, void, SBStatusBarCarrierView, touchesEnded, NSSet *, touches, withEvent, UIEvent *, event)
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
 	useHost = !useHost;
 	ForceUpdate();
-	CHSuper(2, SBStatusBarCarrierView, touchesEnded, touches, withEvent, event);
+	%orig;
 }
 
-CHOptimizedMethod(2, self, void, SBStatusBarOperatorNameView, setOperatorName, NSString *, name, fullSize, BOOL, fullSize)
+- (void)setOperatorName:(NSString *)name fullSize:(BOOL)fullSize
 {
-	CHSuper(2, SBStatusBarOperatorNameView, setOperatorName, name, fullSize, YES);
+	%orig(name, YES);
 }
 
-CHOptimizedMethod(0, self, void, SBWiFiManager, _updateCurrentNetwork)
+%end
+
+%end
+
+%group DeferredWiFiManagerHooks
+
+%hook SBWiFiManager
+
+- (void)_updateCurrentNetwork
 {
-	CHSuper(0, SBWiFiManager, _updateCurrentNetwork);
+	%orig;
 	ForceUpdate();
 }
 
-CHOptimizedMethod(0, self, id, SBWiFiManager, init)
+%end
+
+%end
+
+%hook SBWiFiManager
+
+- (id)init
 {
-	if ((self = CHSuper(0, SBWiFiManager, init))) {
-		CHHook(0, SBWiFiManager, _updateCurrentNetwork);
+	if ((self = %orig)) {
+		%init(DeferredWiFiManagerHooks);
 		[self performSelector:@selector(_updateCurrentNetwork) withObject:nil afterDelay:0.0];
 	}
 	return self;
 }
 
-CHConstructor
+%end
+
+%ctor
 {
-	if (CHLoadLateClass(SBStatusBarDataManager)) {
-		CHHook(2, SBStatusBarDataManager, setStatusBarItem, enabled);
-		CHHook(0, SBStatusBarDataManager, _updateServiceItem);
-		CHLoadLateClass(SBTelephonyManager);
-		CHHook(0, SBTelephonyManager, operatorName);
-		CHLoadLateClass(UIStatusBarServiceItemView);
-		CHHook(2, UIStatusBarServiceItemView, initWithItem, style);
-		CHHook(4, UIStatusBarServiceItemView, initWithItem, data, actions, style);
-		CHHook(2, UIStatusBarServiceItemView, touchesEnded, withEvent);
+	%init;
+
+	if (%c(SBStatusBarDataManager)) {
+		%init(Current);
 	} else {
-		CHLoadLateClass(SBStatusBarCarrierView);
-		CHHook(1, SBStatusBarCarrierView, setOperatorName);
-		CHHook(1, SBStatusBarCarrierView, operatorIconForName);
-		CHHook(1, SBStatusBarCarrierView, startOperatorNameLooping);
-		CHHook(2, SBStatusBarCarrierView, touchesEnded, withEvent);	
-		CHLoadLateClass(SBStatusBarOperatorNameView);
-		CHHook(2, SBStatusBarOperatorNameView, setOperatorName, fullSize);
+		%init(Legacy);
 	}
-	
-	CHLoadLateClass(SBWiFiManager);
-	CHHook(0, SBWiFiManager, init);
 }
