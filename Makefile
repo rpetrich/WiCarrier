@@ -6,7 +6,7 @@ all clean package install::
 else
 
 TWEAK_NAME = WiCarrier
-WiCarrier_OBJC_FILES = WiCarrier.m
+WiCarrier_OBJC_FILES = WiCarrier.x
 WiCarrier_FRAMEWORKS = UIKit
 WiCarrier_PRIVATE_FRAMEWORKS = SystemConfiguration
 WiCarrier_LDFLAGS = -weak_framework MobileWiFi
