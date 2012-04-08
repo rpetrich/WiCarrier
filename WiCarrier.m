@@ -14,6 +14,7 @@ CHDeclareClass(SBStatusBarOperatorNameView);
 CHDeclareClass(SBWiFiManager);
 
 #define IS_IOS_42_OR_LATER() (kCFCoreFoundationVersionNumber >= 550.52)
+#define IS_IOS_50_OR_LATER() (kCFCoreFoundationVersionNumber >= 675.00)
 
 static SBStatusBarCarrierView *carrierView;
 static SBStatusBarDataManager *dataManager;
@@ -230,6 +231,17 @@ static inline NSString *GetNewNetworkName()
 	return networkName;
 }
 
+// 5.x workaround to apply to notification center status bar
+
+static NSInteger replaceOperatorNameWithWiFi;
+
+CHDeclareClass(SBTelephonyManager);
+
+CHOptimizedMethod(0, self, NSString *, SBTelephonyManager, operatorName)
+{
+	return replaceOperatorNameWithWiFi ? GetNewNetworkName() : CHSuper(0, SBTelephonyManager, operatorName);
+}
+
 // 4.x
 
 CHOptimizedMethod(2, self, void, SBStatusBarDataManager, setStatusBarItem, NSInteger, item, enabled, BOOL, enabled)
@@ -242,6 +254,12 @@ CHOptimizedMethod(0, self, void, SBStatusBarDataManager, _updateServiceItem)
 	if (dataManager != self) {
 		[dataManager release];
 		dataManager = [self retain];
+	}
+	if (IS_IOS_50_OR_LATER()) {
+		replaceOperatorNameWithWiFi++;
+		CHSuper(0, SBStatusBarDataManager, _updateServiceItem);
+		replaceOperatorNameWithWiFi--;
+		return;
 	}
 	CHSuper(0, SBStatusBarDataManager, _updateServiceItem);
 	if (IS_IOS_42_OR_LATER()) {
@@ -385,6 +403,8 @@ CHConstructor
 	if (CHLoadLateClass(SBStatusBarDataManager)) {
 		CHHook(2, SBStatusBarDataManager, setStatusBarItem, enabled);
 		CHHook(0, SBStatusBarDataManager, _updateServiceItem);
+		CHLoadLateClass(SBTelephonyManager);
+		CHHook(0, SBTelephonyManager, operatorName);
 		CHLoadLateClass(UIStatusBarServiceItemView);
 		CHHook(2, UIStatusBarServiceItemView, initWithItem, style);
 		CHHook(4, UIStatusBarServiceItemView, initWithItem, data, actions, style);
