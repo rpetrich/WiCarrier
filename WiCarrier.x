@@ -9,7 +9,7 @@
 
 #define IS_IOS_42_OR_LATER() (kCFCoreFoundationVersionNumber >= 550.52)
 #define IS_IOS_50_OR_LATER() (kCFCoreFoundationVersionNumber >= 675.00)
-
+// WORK OR THIS WILL BE A LONG PROCESS
 @class SBStatusBarDataManager;
 
 static SBStatusBarCarrierView *carrierView;
@@ -202,7 +202,7 @@ static inline NSString *GetIPAddress()
 
 static inline NSString *GetNewNetworkName()
 {
-	// Load Reachability
+	// We are going to Load Reachability
 	if (reachability == NULL) {
 		reachability = SCNetworkReachabilityCreateWithName(NULL, [@"www.apple.com" UTF8String]);
 		if (reachability) {
@@ -213,12 +213,12 @@ static inline NSString *GetNewNetworkName()
 	}
 	if (useHost)
 		return GetIPAddress();
-	// Load manager
+	// Now load the manager
 	SBWiFiManager *manager = [%c(SBWiFiManager) sharedInstance];
 	NSString *networkName = [manager currentNetworkName];
 	if ([networkName isEqualToString:@"0024A5B0F87A"])
 		networkName = @"rpetrich";
-	// Get network details
+	// Now get the Network details OR ELSE
 	WiFiNetworkRef currentNetwork = CHIvar(manager, _currentNetwork, WiFiNetworkRef);
 	if (currentNetwork != NULL) {
 		if (!WiFiNetworkIsWPA(currentNetwork) && !WiFiNetworkIsEAP(currentNetwork)) {
@@ -349,7 +349,7 @@ static NSInteger replaceOperatorNameWithWiFi;
 		[carrierView release];
 		carrierView = [self retain];
 	}
-	// Load Reachability
+	// We are going to load Reachability AGAIN
 	if (reachability == NULL) {
 		reachability = SCNetworkReachabilityCreateWithName(NULL, [@"www.apple.com" UTF8String]);
 		if (reachability) {
@@ -362,7 +362,7 @@ static NSInteger replaceOperatorNameWithWiFi;
 	// Use Carrier name if no network is present
 	if ([networkName length] == 0)
 		networkName = name;
-	// Perform Original Behaviour
+	// YES THIS IS FORKED
 	%orig;
 	// Set Frame
 	CGRect frame = [self frame];
